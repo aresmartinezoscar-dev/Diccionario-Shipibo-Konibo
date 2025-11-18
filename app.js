@@ -1,6 +1,7 @@
 // Estado global de la aplicación
 let diccionario = [];
-let resultadosFiltrados = [];
+let resultadosExactos = [];
+let resultadosEnEjemplos = [];
 let filtrosActivos = {
     busqueda: '',
     categoria: '',
@@ -18,7 +19,10 @@ const tipoSustantivoFilter = document.getElementById('tipoSustantivoFilter');
 const soloConEjemplosCheck = document.getElementById('soloConEjemplos');
 const toggleFiltersBtn = document.getElementById('toggleFilters');
 const advancedFilters = document.getElementById('advancedFilters');
+const mainResultsDiv = document.getElementById('mainResults');
 const resultsDiv = document.getElementById('results');
+const exampleResultsDiv = document.getElementById('exampleResults');
+const exampleResultsGrid = document.getElementById('exampleResultsGrid');
 const loadingDiv = document.getElementById('loading');
 const emptyState = document.getElementById('emptyState');
 const resultsInfo = document.getElementById('resultsInfo');
@@ -44,8 +48,15 @@ async function cargarDiccionario() {
         // Actualizar estadísticas
         document.getElementById('totalPalabras').textContent = diccionario.length.toLocaleString('es-PE');
         
+        const totalEjemplos = diccionario.reduce((sum, p) => sum + (p.ejemplos?.length || 0), 0);
+        document.getElementById('totalEjemplos').textContent = totalEjemplos.toLocaleString('es-PE');
+        
+        const categoriasUnicas = new Set(diccionario.map(p => p.categoria).filter(c => c));
+        document.getElementById('totalCategorias').textContent = categoriasUnicas.size.toLocaleString('es-PE');
+        
         // Mostrar resultados iniciales (primeras 50 palabras)
-        resultadosFiltrados = diccionario.slice(0, 50);
+        resultadosExactos = diccionario.slice(0, 50);
+        resultadosEnEjemplos = [];
         mostrarResultados();
         loadingDiv.style.display = 'none';
     } catch (error) {
@@ -54,32 +65,58 @@ async function cargarDiccionario() {
     }
 }
 
-// Función de búsqueda y filtrado
+// Función de búsqueda y filtrado MEJORADA
 function aplicarFiltros() {
     let resultados = diccionario;
+    let enEjemplos = [];
     
-    // Filtro de búsqueda
+    // Filtro de búsqueda con priorización
     if (filtrosActivos.busqueda) {
         const termino = filtrosActivos.busqueda.toLowerCase().trim();
-        resultados = resultados.filter(palabra => {
+        
+        // PASO 1: Buscar coincidencias EXACTAS en termino y español
+        const coincidenciasExactas = resultados.filter(palabra => {
+            const matchTerminoExacto = palabra.termino.toLowerCase() === termino;
+            const matchEspanolExacto = palabra.espanol.toLowerCase() === termino;
+            return matchTerminoExacto || matchEspanolExacto;
+        });
+        
+        // PASO 2: Buscar coincidencias PARCIALES en termino y español (pero no en ejemplos)
+        const coincidenciasParciales = resultados.filter(palabra => {
+            // Excluir las que ya están en exactas
+            if (coincidenciasExactas.some(p => p.id === palabra.id)) return false;
+            
             const matchTermino = palabra.termino.toLowerCase().includes(termino);
             const matchEspanol = palabra.espanol.toLowerCase().includes(termino);
-            const matchEjemplos = palabra.ejemplos.some(ej => 
+            return matchTermino || matchEspanol;
+        });
+        
+        // PASO 3: Buscar en ejemplos (separado)
+        enEjemplos = resultados.filter(palabra => {
+            // Excluir las que ya están en exactas o parciales
+            if (coincidenciasExactas.some(p => p.id === palabra.id)) return false;
+            if (coincidenciasParciales.some(p => p.id === palabra.id)) return false;
+            
+            return palabra.ejemplos.some(ej => 
                 ej.shipibo.toLowerCase().includes(termino) ||
                 ej.castellano.toLowerCase().includes(termino)
             );
-            return matchTermino || matchEspanol || matchEjemplos;
         });
+        
+        // Combinar resultados principales (exactas + parciales)
+        resultados = [...coincidenciasExactas, ...coincidenciasParciales];
     }
     
     // Filtro de categoría
     if (filtrosActivos.categoria) {
         resultados = resultados.filter(p => p.categoria === filtrosActivos.categoria);
+        enEjemplos = enEjemplos.filter(p => p.categoria === filtrosActivos.categoria);
     }
     
     // Filtro de letra
     if (filtrosActivos.letra) {
         resultados = resultados.filter(p => p.letra === filtrosActivos.letra);
+        enEjemplos = enEjemplos.filter(p => p.letra === filtrosActivos.letra);
     }
     
     // Filtro de tipo de sustantivo
@@ -88,55 +125,89 @@ function aplicarFiltros() {
             p.categoria_sustantivo && 
             p.categoria_sustantivo.toLowerCase().includes(filtrosActivos.tipoSustantivo.toLowerCase())
         );
+        enEjemplos = enEjemplos.filter(p => 
+            p.categoria_sustantivo && 
+            p.categoria_sustantivo.toLowerCase().includes(filtrosActivos.tipoSustantivo.toLowerCase())
+        );
     }
     
     // Filtro de solo con ejemplos
     if (filtrosActivos.soloConEjemplos) {
         resultados = resultados.filter(p => p.ejemplos && p.ejemplos.length > 0);
+        enEjemplos = enEjemplos.filter(p => p.ejemplos && p.ejemplos.length > 0);
     }
     
     // Limitar resultados si no hay búsqueda activa (para rendimiento)
     if (!filtrosActivos.busqueda && resultados.length > 100) {
         resultados = resultados.slice(0, 100);
+        enEjemplos = [];
     }
     
-    resultadosFiltrados = resultados;
+    resultadosExactos = resultados;
+    resultadosEnEjemplos = enEjemplos;
     mostrarResultados();
 }
 
 // Mostrar resultados en la pantalla
 function mostrarResultados() {
     resultsDiv.innerHTML = '';
+    exampleResultsGrid.innerHTML = '';
     
-    if (resultadosFiltrados.length === 0) {
-        resultsDiv.style.display = 'none';
+    const hayResultadosExactos = resultadosExactos.length > 0;
+    const hayResultadosEjemplos = resultadosEnEjemplos.length > 0;
+    
+    // Si no hay resultados en ninguna categoría
+    if (!hayResultadosExactos && !hayResultadosEjemplos) {
+        mainResultsDiv.style.display = 'none';
+        exampleResultsDiv.style.display = 'none';
         emptyState.style.display = 'block';
         resultsInfo.textContent = '';
         return;
     }
     
-    resultsDiv.style.display = 'grid';
     emptyState.style.display = 'none';
     
+    // Mostrar sección de resultados exactos
+    if (hayResultadosExactos) {
+        mainResultsDiv.style.display = 'block';
+        resultadosExactos.forEach(palabra => {
+            const card = crearTarjetaPalabra(palabra, 'exact-match');
+            resultsDiv.appendChild(card);
+        });
+    } else {
+        mainResultsDiv.style.display = 'none';
+    }
+    
+    // Mostrar sección de resultados en ejemplos
+    if (hayResultadosEjemplos) {
+        exampleResultsDiv.style.display = 'block';
+        resultadosEnEjemplos.forEach(palabra => {
+            const card = crearTarjetaPalabra(palabra, 'example-match');
+            exampleResultsGrid.appendChild(card);
+        });
+    } else {
+        exampleResultsDiv.style.display = 'none';
+    }
+    
     // Actualizar información de resultados
-    let infoText = `Mostrando ${resultadosFiltrados.length.toLocaleString('es-PE')} `;
-    infoText += resultadosFiltrados.length === 1 ? 'resultado' : 'resultados';
+    let infoText = '';
+    if (hayResultadosExactos) {
+        infoText += `${resultadosExactos.length} coincidencia${resultadosExactos.length === 1 ? '' : 's'} directa${resultadosExactos.length === 1 ? '' : 's'}`;
+    }
+    if (hayResultadosEjemplos) {
+        if (infoText) infoText += ' • ';
+        infoText += `${resultadosEnEjemplos.length} en ejemplos`;
+    }
     if (filtrosActivos.busqueda) {
         infoText += ` para "${filtrosActivos.busqueda}"`;
     }
     resultsInfo.textContent = infoText;
-    
-    // Crear tarjetas de palabras
-    resultadosFiltrados.forEach(palabra => {
-        const card = crearTarjetaPalabra(palabra);
-        resultsDiv.appendChild(card);
-    });
 }
 
 // Crear tarjeta de palabra
-function crearTarjetaPalabra(palabra) {
+function crearTarjetaPalabra(palabra, matchType = 'exact-match') {
     const card = document.createElement('div');
-    card.className = 'word-card';
+    card.className = `word-card ${matchType}`;
     card.onclick = () => abrirModal(palabra);
     
     // Resaltar términos de búsqueda
@@ -157,11 +228,13 @@ function crearTarjetaPalabra(palabra) {
     let ejemploPreview = '';
     if (palabra.ejemplos && palabra.ejemplos.length > 0) {
         const ejemplo = palabra.ejemplos[0];
+        const shipibo = resaltarTexto(ejemplo.shipibo, filtrosActivos.busqueda);
+        const castellano = resaltarTexto(ejemplo.castellano, filtrosActivos.busqueda);
         ejemploPreview = `
             <div class="word-examples">
                 <div class="example-preview">
-                    "${ejemplo.shipibo}"<br>
-                    <small>${ejemplo.castellano}</small>
+                    "${shipibo}"<br>
+                    <small>${castellano}</small>
                 </div>
                 ${palabra.ejemplos.length > 1 ? '<div class="view-more">Ver más ejemplos →</div>' : ''}
             </div>
