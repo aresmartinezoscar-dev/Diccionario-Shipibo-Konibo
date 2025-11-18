@@ -258,7 +258,7 @@ function crearTarjetaPalabra(palabra, matchType = 'exact-match') {
 function resaltarTexto(texto, termino) {
     if (!termino) return texto;
     const regex = new RegExp(`(${termino})`, 'gi');
-    return texto.replace(regex, '<span class="highlight">$1</span>');
+    return texto.replace(regex, '<mark class="highlight">$1</mark>');
 }
 
 // Abrir modal con detalles completos
