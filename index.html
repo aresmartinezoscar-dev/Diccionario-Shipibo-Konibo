@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Diccionario Shipibo-Konibo - Español. Preservando la lengua amazónica de Ucayali, Perú">
+    <meta name="keywords" content="shipibo, konibo, diccionario, ucayali, perú, lengua indígena, amazonia">
+    <title>Diccionario Shipibo-Konibo - Español</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-section">
+                    <div class="logo-icon">📚</div>
+                    <div>
+                        <h1 class="logo-title">Diccionario Shipibo-Konibo</h1>
+                        <p class="logo-subtitle">Preservando nuestra lengua amazónica</p>
+                    </div>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-number" id="totalPalabras">4,817</span>
+                        <span class="stat-label">palabras</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Search Section -->
+    <section class="search-section">
+        <div class="container">
+            <div class="search-container">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input 
+                        type="text" 
+                        id="searchInput" 
+                        class="search-input" 
+                        placeholder="Buscar en Shipibo-Konibo o Español..."
+                        autocomplete="off"
+                    >
+                    <button id="clearSearch" class="clear-btn" style="display: none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="filters">
+                    <select id="categoriaFilter" class="filter-select">
+                        <option value="">Todas las categorías</option>
+                        <option value="s.">Sustantivos</option>
+                        <option value="v. t.">Verbos transitivos</option>
+                        <option value="v. i.">Verbos intransitivos</option>
+                        <option value="adj.">Adjetivos</option>
+                        <option value="adv.">Adverbios</option>
+                    </select>
+                    
+                    <select id="letraFilter" class="filter-select">
+                        <option value="">Todas las letras</option>
+                    </select>
+                    
+                    <button id="toggleFilters" class="filter-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Filtros avanzados
+                    </button>
+                </div>
+
+                <!-- Filtros avanzados (ocultos por defecto) -->
+                <div id="advancedFilters" class="advanced-filters" style="display: none;">
+                    <div class="filter-group">
+                        <label>Tipo de sustantivo:</label>
+                        <select id="tipoSustantivoFilter" class="filter-select">
+                            <option value="">Todos</option>
+                            <option value="plantas">Plantas</option>
+                            <option value="Animales">Animales</option>
+                            <option value="Nombres Propios">Nombres Propios</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>
+                            <input type="checkbox" id="soloConEjemplos" class="filter-checkbox">
+                            Solo palabras con ejemplos
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados counter -->
+            <div id="resultsInfo" class="results-info"></div>
+        </div>
+    </section>
+
+    <!-- Results Section -->
+    <main class="main-content">
+        <div class="container">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Cargando diccionario...</p>
+            </div>
+            
+            <div id="results" class="results-grid"></div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                <h3>No se encontraron resultados</h3>
+                <p>Intenta con otra palabra o ajusta los filtros</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal para detalles -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Sobre este proyecto</h4>
+                    <p>Diccionario digital para la preservación y difusión de la lengua Shipibo-Konibo de Ucayali, Perú.</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Recursos</h4>
+                    <ul>
+                        <li><a href="#" id="aboutLink">Acerca del proyecto</a></li>
+                        <li><a href="https://github.com" target="_blank">GitHub</a></li>
+                        <li><a href="#" id="contactLink">Contacto</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Comparte</h4>
+                    <div class="social-links">
+                        <a href="#" class="social-btn" title="Compartir en Facebook">📘</a>
+                        <a href="#" class="social-btn" title="Compartir en Twitter">🐦</a>
+                        <a href="#" class="social-btn" title="Compartir en WhatsApp">💬</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Diccionario Shipibo-Konibo. Hecho con ❤️ para preservar nuestra cultura.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
